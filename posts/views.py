@@ -27,4 +27,4 @@ def get_posts(request):
 
 def get_post(request, id):
     post = get_object_or_404(Post, pk=id)
-    return HttpResponse(content=f"{post.pk} : {post.header} : {post.description}")
+    return render(request, "posts/post_detail.html", context={"post": post})

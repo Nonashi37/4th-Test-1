@@ -25,10 +25,10 @@ from posts.views import about, get_post, get_posts, hello, main
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("hello/", hello),
-    path("", main),
+    path("", main, name="home"),
     path("about/", about),
     path("posts/", get_posts),
-    path("post/<int:id>/", get_post),
+    path("post/<int:id>/", get_post, name="post_detail"),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

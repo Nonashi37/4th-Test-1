@@ -16,10 +16,24 @@ from django.db import models
 
 
 # SELECT * FROM posts_post WHERE header ILIKE '% AB %'; posts = Post.objects.filter(header__icontains="ab", is_deleted = False)
+
+
+class User(models.Model):
+    name = models.CharField(max_length=255)
+    surname = models.CharField(max_length=255)
+    age = models.PositiveIntegerField()
+
+
+class Tags(models.Model):
+    title = models.CharField(max_length=255)
+
+
 class Post(models.Model):
     header = models.CharField(max_length=255)
     description = models.TextField()
     rate = models.IntegerField(null=True, blank=True)
+    tags = models.ManyToManyField(Tags, null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
