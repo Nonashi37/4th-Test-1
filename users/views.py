@@ -41,3 +41,7 @@ def login_view(request):
 def logout_view(request):
     logout(request)  # safe to call even if anonymous
     return redirect("home")
+
+
+# superuser:
+# Admin, Admin@Geeksemail.com, lengadoc
