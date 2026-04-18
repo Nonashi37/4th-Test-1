@@ -46,6 +46,7 @@
     {% if user %}
     <div class="d-flex align-items-center text-white">
         {% if user.is_authenticated %}
+        <a href="{% url 'profile_edit' %}">{{ user.username }}</a>
         <div class="bg-white text-primary rounded-circle d-flex align-items-center justify-content-center me-2" 
              style="width: 35px; height: 35px; font-weight: bold; color: black; background: #1111;">
             {{ user.username|first|upper }}

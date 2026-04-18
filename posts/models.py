@@ -18,7 +18,7 @@ class Post(models.Model):
     is_published = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    image = models.ImageField(upload_to="posts", null=True, blank=True)
+    image = models.ImageField(upload_to="posts", max_length=255, null=True, blank=True) # max length=255 so now the names of pictures to pust can be longer
 
     def __str__(self):
         return self.header

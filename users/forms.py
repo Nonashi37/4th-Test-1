@@ -2,6 +2,8 @@ from typing import Any
 
 from django import forms
 
+from django.contrib.auth.models import User
+
 
 class RegisterForm(forms.Form):
     username = forms.CharField(max_length=255, required=True)
@@ -23,3 +25,15 @@ class RegisterForm(forms.Form):
 class LoginForm(forms.Form):
     username = forms.CharField(max_length=255, required=True)
     password = forms.CharField(max_length=255, min_length=3, required=True)
+
+
+class EditProfileForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["username", "first_name", "last_name", "email"]
+        widgets = {
+            "username": forms.TextInput(attrs={"placeholder": "Username"}),
+            "email": forms.EmailInput(attrs={"placeholder": "Email"}),
+            "first_name": forms.TextInput(attrs={"placeholder": "First name"}),
+            "last_name": forms.TextInput(attrs={"placeholder": "Last name"}),
+        }

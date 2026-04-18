@@ -11,6 +11,31 @@
     </div>
 </div>
 
+<!-- Tag filter bar -->
+<div class="d-flex flex-wrap align-items-center gap-2 my-3">
+  <span class="fw-bold me-1">Filter by tag:</span>
+
+  <a href="{% url 'post_list' %}"
+     class="badge rounded-pill text-decoration-none
+            {% if not selected_tag %}bg-primary{% else %}bg-secondary{% endif %}">
+    All
+  </a>
+
+  {% for tag in tags %}
+    <a href="{% url 'post_list' %}?tag={{ tag.pk }}"
+       class="badge rounded-pill text-decoration-none
+              {% if selected_tag.pk == tag.pk %}bg-primary{% else %}bg-secondary{% endif %}">
+      {{ tag.title }}
+    </a>
+  {% endfor %}
+</div>
+
+{% if selected_tag %}
+  <p class="text-muted">
+    Showing posts tagged: <strong>{{ selected_tag.title }}</strong>
+  </p>
+{% endif %}
+
 {% if posts %}
     <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
         {% for post in posts %}

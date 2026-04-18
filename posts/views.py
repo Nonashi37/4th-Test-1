@@ -4,7 +4,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from posts.forms import CommentForm, PostForm
-from posts.models import Post
+from posts.models import Post, Tags # add tags import
 
 
 def hello(request):
@@ -20,8 +20,22 @@ def about(request):
 
 
 def get_posts(request):
+    tag_slug = request.GET.get("tag") # ?tag=3 from URL
+    tags = Tags.objects.all()
+                               
     posts = Post.objects.filter(is_published=True).select_related("user").order_by("-created_at")
-    return render(request, "posts/posts_view.html", context={"posts": posts})
+
+    selected_tag = None
+    if tag_slug:
+        selected_tag = Tags.objects.filter(pk=tag_slug).filter()
+        if selected_tag:
+            posts = posts.filter(tags=selected_tag)
+
+    return render(request, "posts/posts_view.html", context={
+        "posts": posts,
+        "tags": tags,
+        "selected_tag": selected_tag,
+    })
 
 
 def get_post(request: HttpRequest, id: int):
