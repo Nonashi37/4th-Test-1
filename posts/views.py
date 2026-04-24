@@ -1,54 +1,77 @@
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import AnonymousUser
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from posts.models import Post, Tags
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse_lazy
+from django.views import View
+from django.views.generic import DetailView, ListView, TemplateView, CreateView
 
 from posts.forms import CommentForm, PostForm
-from posts.models import Post, Tags # add tags import
+from posts.models import Post, Tags
 
 
+# ✅ stays simple, no change needed
 def hello(request):
     return HttpResponse("Hello Django!")
-
-
-def main(request):
-    return render(request, "base.html")
 
 
 def about(request):
     return HttpResponse("<h1>About us</h1> <a href='/'>Main</a>")
 
 
-def get_posts(request):
-    tag_id = request.GET.get("tag") # Tags.objects.filter(pk=tag_slug) returns a QuerySet, even if it contains only one tag.
-    tags = Tags.objects.all()       # But posts.filter(tags=...) expects one tag object, not a QuerySet.
-                               
-    posts = Post.objects.filter(is_published=True).select_related("user").order_by("-created_at")
-
-    selected_tag = None
-    if tag_id:
-        selected_tag = get_object_or_404(Tags, pk=tag_id)   # NOw filter(...) gives a collection
-        posts = posts.filter(tags=selected_tag)             # get_object_or_404(...) gives one tag object
-                                                            # posts.filter(tags=selected_tag) works only with one tag object
-                                                            # Defeated the prob
-    return render(request, "posts/posts_view.html", context={ 
-        "posts": posts,
-        "tags": tags,
-        "selected_tag": selected_tag,
-    })
+# ✅ FBV → TemplateView (just renders base.html, no logic)
+class MainView(TemplateView):
+    template_name = "base.html"
 
 
-def get_post(request: HttpRequest, id: int):
-    post = get_object_or_404(Post, pk=id)
-    comments = post.comments.select_related("author").order_by("created_at")
-    comment_form = CommentForm()
+# ✅ FBV → ListView (tag filtering logic moved into get_queryset)
+class PostListView(ListView):
+    template_name = "posts/posts_view.html"
+    context_object_name = "posts"
 
-    if request.method == "POST":
+    def get_queryset(self):
+        queryset = Post.objects.filter(is_published=True)\
+                               .select_related("user")\
+                               .order_by("-created_at")
+        tag_id = self.request.GET.get("tag")
+        if tag_id:
+            # save selected_tag so we can reuse it in get_context_data
+            self._selected_tag = get_object_or_404(Tags, pk=tag_id)
+            queryset = queryset.filter(tags=self._selected_tag)
+        else:
+            self._selected_tag = None
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["tags"] = Tags.objects.all()
+        context["selected_tag"] = self._selected_tag
+        return context
+
+
+# ✅ FBV → DetailView + View (GET=show post, POST=submit comment)
+class PostDetailView(DetailView):
+    model = Post
+    template_name = "posts/post_detail.html"
+    context_object_name = "post"
+    pk_url_kwarg = "id"  # your URL uses <int:id>, not <int:pk>
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["comments"] = self.object.comments\
+                                         .select_related("author")\
+                                         .order_by("created_at")
+        context["comment_form"] = CommentForm()
+        return context
+
+    def post(self, request, id):
+        # block anonymous users
         if isinstance(request.user, AnonymousUser):
             return redirect("login")
 
+        post = get_object_or_404(Post, pk=id)
         comment_form = CommentForm(request.POST)
+
         if comment_form.is_valid():
             comment = comment_form.save(commit=False)
             comment.post = post
@@ -56,24 +79,26 @@ def get_post(request: HttpRequest, id: int):
             comment.save()
             return redirect("post_detail", id=id)
 
-    return render(request, "posts/post_detail.html", context={
-        "post": post,
-        "comments": comments,
-        "comment_form": comment_form,
-    })
+        # form invalid → re-render with errors
+        comments = post.comments.select_related("author").order_by("created_at")
+        return self.render_to_response(self.get_context_data(
+            post=post,
+            comments=comments,
+            comment_form=comment_form,
+        ))
 
 
-@login_required(login_url="/users/login/")
-def create_post(request: HttpRequest):
-    if request.method == "POST":
-        form = PostForm(request.POST, request.FILES)
-        if form.is_valid():
-            post = form.save(commit=False)
-            post.user = request.user
-            post.save()
-            form.save_m2m()  # for tags ManyToMany
-            return redirect("post_list")
-    else:
-        form = PostForm()
+# ✅ FBV → CreateView (LoginRequiredMixin replaces @login_required)
+class PostCreateView(LoginRequiredMixin, CreateView):
+    model = Post
+    form_class = PostForm
+    template_name = "posts/create_post.html"
+    success_url = reverse_lazy("post_list")
+    login_url = "/users/login/"
 
-    return render(request, "posts/create_post.html", context={"form": form})
+    def form_valid(self, form):
+        post = form.save(commit=False)
+        post.user = self.request.user
+        post.save()
+        form.save_m2m()  # ← ManyToMany tags, same as before
+        return redirect(self.success_url)
